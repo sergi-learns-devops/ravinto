@@ -1,0 +1,30 @@
+services:
+  backend:
+    build: ./backend
+    container_name: ravinto-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./backend/app:/app/app
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./data/ravinto.db
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production-please}
+      - CORS_ORIGINS=http://localhost:3000,http://192.168.1.172:3000
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    user: "501:20"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_URL=http://192.168.1.172:8000
+    container_name: ravinto-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://192.168.1.172:8000
+    depends_on:
+      - backend
+    restart: unless-stopped

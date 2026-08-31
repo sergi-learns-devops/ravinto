@@ -1,0 +1,58 @@
+# Ravinto — Homelab Deployment
+# Todas las funciones premium desbloqueadas
+# Uso: docker compose -f docker-compose.homelab.yml up -d --build
+#
+# Acceso: http://<IP_DE_TU_SERVER>:3000
+# API docs: http://<IP_DE_TU_SERVER>:8000/docs
+
+services:
+  backend:
+    build: ./backend
+    container_name: ravinto-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ravinto_data:/app/data
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./data/ravinto.db
+      - SECRET_KEY=${SECRET_KEY:-ravinto-homelab-secret-change-me-in-production}
+      - CORS_ORIGINS=*
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - REFRESH_TOKEN_EXPIRE_DAYS=30
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    restart: always
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '1.0'
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_URL=http://${HOMELAB_IP:-localhost}:8000
+    container_name: ravinto-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://${HOMELAB_IP:-localhost}:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.5'
+
+volumes:
+  ravinto_data:
+    driver: local
