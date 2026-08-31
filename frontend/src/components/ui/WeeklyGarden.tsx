@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from '@/i18n';
+
 interface GardenDay {
   date: string;
   total_kcal: number;
@@ -116,14 +118,15 @@ function PlantForDay({ kcal, goal, dayLabel }: { kcal: number; goal: number; day
 }
 
 export function WeeklyGarden({ days }: WeeklyGardenProps) {
-  const dayNames = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+  const { t } = useTranslation();
+  const dayNames = (t.garden_days as unknown as string[]);
 
   return (
     <div className="glass-card">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-lg">🌱</span>
         <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200">
-          Tu jardín semanal
+          {t.garden_title}
         </h3>
       </div>
       <div className="flex items-end justify-between px-1">
@@ -137,7 +140,7 @@ export function WeeklyGarden({ days }: WeeklyGardenProps) {
         ))}
       </div>
       <p className="text-[10px] text-neutral-400 text-center mt-3">
-        Cada día que registras, tu jardín florece 🌿
+        {t.garden_msg}
       </p>
     </div>
   );

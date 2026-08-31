@@ -6,12 +6,16 @@ import { AuthLayout } from '@/components/layout/AuthLayout';
 import { Card } from '@/components/ui/Card';
 import { analyticsService, WeeklySummary } from '@/services/analytics.service';
 import { useAuthStore } from '@/stores/authStore';
+import { useTranslation } from '@/i18n';
 
 export default function HistoryPage() {
   const [weekly, setWeekly] = useState<WeeklySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const user = useAuthStore((s) => s.user);
   const goal = user?.daily_goal_kcal || 2000;
+  const { t, locale } = useTranslation();
+
+  const dateLocale = locale === 'ca' ? 'ca-ES' : locale === 'en' ? 'en-GB' : 'es-ES';
 
   useEffect(() => {
     analyticsService
@@ -22,7 +26,7 @@ export default function HistoryPage() {
   }, []);
 
   const chartData = weekly?.days.map((d) => ({
-    name: new Date(d.date).toLocaleDateString('es-ES', { weekday: 'short' }),
+    name: new Date(d.date).toLocaleDateString(dateLocale, { weekday: 'short' }),
     kcal: d.total_kcal,
     date: d.date,
   })) || [];
@@ -31,13 +35,13 @@ export default function HistoryPage() {
     <AuthLayout>
       <div className="animate-fade-in">
         <h1 className="text-2xl font-bold font-heading text-neutral-900 dark:text-white mb-6">
-          Historial
+          {t.history}
         </h1>
 
         {/* Weekly Chart */}
         <Card className="mb-6">
           <h2 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-4 uppercase tracking-wide">
-            Últimos 7 días
+            {t.last_7_days}
           </h2>
 
           {loading ? (
@@ -77,7 +81,7 @@ export default function HistoryPage() {
             </span>
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-0.5 border-t-2 border-dashed border-primary-400" style={{ width: 12 }} />
-              Objetivo ({goal} kcal)
+              {t.history_goal} ({goal} kcal)
             </span>
           </div>
         </Card>
@@ -87,14 +91,14 @@ export default function HistoryPage() {
           <Card className="mb-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center">
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">Total semanal</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.weekly_total}</p>
                 <p className="text-xl font-mono font-bold text-neutral-900 dark:text-white">
                   {Math.round(weekly.total_kcal).toLocaleString()}
                 </p>
                 <p className="text-xs text-neutral-400">kcal</p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-neutral-500 dark:text-neutral-400">Media diaria</p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">{t.daily_average}</p>
                 <p className="text-xl font-mono font-bold text-neutral-900 dark:text-white">
                   {Math.round(weekly.average_kcal).toLocaleString()}
                 </p>
@@ -106,7 +110,7 @@ export default function HistoryPage() {
 
         {/* Daily breakdown */}
         <h2 className="text-sm font-medium text-neutral-500 dark:text-neutral-400 mb-3 uppercase tracking-wide">
-          Detalle diario
+          {t.daily_detail}
         </h2>
         <div className="space-y-2">
           {chartData.map((day) => {
@@ -117,7 +121,7 @@ export default function HistoryPage() {
               <Card key={day.date} className="flex items-center gap-4 p-4">
                 <div className="flex-1">
                   <p className="text-sm font-medium text-neutral-800 dark:text-white capitalize">
-                    {new Date(day.date).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric' })}
+                    {new Date(day.date).toLocaleDateString(dateLocale, { weekday: 'long', day: 'numeric' })}
                   </p>
                   <div className="w-full h-2 bg-neutral-100 dark:bg-[#2E3530] rounded-full mt-2">
                     <div

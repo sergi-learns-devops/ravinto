@@ -1,12 +1,14 @@
 'use client';
 
 import { AnimatedNumber } from './AnimatedNumber';
+import { useTranslation } from '@/i18n';
 
 interface FireStreakProps {
   days: number;
 }
 
 export function FireStreak({ days }: FireStreakProps) {
+  const { t } = useTranslation();
   if (days <= 0) return null;
 
   const intensity = Math.min(days / 30, 1); // 0 to 1 over 30 days
@@ -77,15 +79,15 @@ export function FireStreak({ days }: FireStreakProps) {
             className="text-2xl text-secondary-500"
           />
           <span className="text-sm font-medium text-neutral-600 dark:text-neutral-300">
-            {days === 1 ? 'día' : 'días'}
+            {days === 1 ? t.streak_day : t.streak_days}
           </span>
         </div>
         <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-          {days >= 30 ? '🏆 ¡Racha legendaria!' :
-           days >= 14 ? '⭐ ¡Imparable!' :
-           days >= 7 ? '💪 ¡Gran racha!' :
-           days >= 3 ? '🌱 ¡Sigue así!' :
-           '✨ ¡Buen comienzo!'}
+          {days >= 30 ? t.streak_legendary :
+           days >= 14 ? t.streak_unstoppable :
+           days >= 7 ? t.streak_great :
+           days >= 3 ? t.streak_keep :
+           t.streak_start}
         </p>
       </div>
     </div>

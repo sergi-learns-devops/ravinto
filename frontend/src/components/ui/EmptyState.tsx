@@ -3,39 +3,42 @@
 import Link from 'next/link';
 import { Plus } from 'lucide-react';
 import { Button } from './Button';
+import { useTranslation } from '@/i18n';
 
 interface EmptyStateProps {
   variant?: 'meals' | 'history' | 'search' | 'favorites';
 }
 
 export function EmptyState({ variant = 'meals' }: EmptyStateProps) {
+  const { t } = useTranslation();
+
   const configs = {
     meals: {
       emoji: '🍽️',
-      title: '¡Tu día está en blanco!',
-      message: 'Registra tu primera comida y empieza a nutrir tu jardín interior.',
-      cta: 'Añadir comida',
+      title: t.empty_meals_title,
+      message: t.empty_meals_msg,
+      cta: t.empty_meals_cta,
       href: '/add-meal',
     },
     history: {
       emoji: '📅',
-      title: 'Aún no hay historial',
-      message: 'Empieza a registrar tus comidas y aquí verás tu progreso semanal.',
-      cta: 'Ir al dashboard',
+      title: t.empty_history_title,
+      message: t.empty_history_msg,
+      cta: t.nav_home,
       href: '/dashboard',
     },
     search: {
       emoji: '🔍',
-      title: 'No se encontraron resultados',
-      message: 'Intenta con otro nombre o crea el alimento manualmente.',
+      title: t.empty_search_title,
+      message: t.empty_search_msg,
       cta: null,
       href: null,
     },
     favorites: {
       emoji: '⭐',
-      title: 'Sin favoritos todavía',
-      message: 'Guarda los alimentos que más usas para acceder rápido.',
-      cta: 'Buscar alimentos',
+      title: t.empty_search_title,
+      message: t.empty_search_msg,
+      cta: t.search_food,
       href: '/add-meal',
     },
   };

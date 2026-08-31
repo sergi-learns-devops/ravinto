@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { X, Camera } from 'lucide-react';
 import { Button } from './Button';
+import { useTranslation } from '@/i18n';
 
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void;
@@ -13,6 +14,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
   const scannerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const html5QrCodeRef = useRef<any>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     let scanner: any = null;
@@ -40,7 +42,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
           }
         );
       } catch (err) {
-        setError('No se pudo acceder a la cámara. Verifica los permisos.');
+        setError(t.scanner_error);
       }
     };
 
@@ -59,7 +61,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-2 text-white">
           <Camera className="w-5 h-5" />
-          <span className="font-medium text-sm">Escanear código de barras</span>
+          <span className="font-medium text-sm">{t.scanner_title}</span>
         </div>
         <button
           onClick={onClose}
@@ -74,7 +76,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
         {error ? (
           <div className="text-center">
             <p className="text-white/70 text-sm mb-4">{error}</p>
-            <Button variant="secondary" onClick={onClose}>Cerrar</Button>
+            <Button variant="secondary" onClick={onClose}>{t.scanner_close}</Button>
           </div>
         ) : (
           <div className="w-full max-w-sm">
@@ -84,7 +86,7 @@ export function BarcodeScanner({ onScan, onClose }: BarcodeScannerProps) {
               className="rounded-2xl overflow-hidden"
             />
             <p className="text-center text-white/50 text-xs mt-4">
-              Apunta al código de barras del producto
+              {t.scanner_hint}
             </p>
           </div>
         )}

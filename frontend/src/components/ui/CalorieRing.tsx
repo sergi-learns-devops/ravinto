@@ -1,6 +1,7 @@
 'use client';
 
 import { AnimatedNumber } from './AnimatedNumber';
+import { useTranslation } from '@/i18n';
 
 interface CalorieRingProps {
   consumed: number;
@@ -9,6 +10,7 @@ interface CalorieRingProps {
 }
 
 export function CalorieRing({ consumed, goal, size = 240 }: CalorieRingProps) {
+  const { t } = useTranslation();
   const percentage = Math.min((consumed / goal) * 100, 100);
   const radius = (size - 28) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -90,11 +92,11 @@ export function CalorieRing({ consumed, goal, size = 240 }: CalorieRingProps) {
           gradient
         />
         <span className="text-sm text-neutral-400 dark:text-neutral-500 mt-1">
-          de {goal} kcal
+          {t.of_goal} {goal} {t.of_kcal}
         </span>
         <div className="mt-2 px-3 py-1 rounded-full bg-primary-50/80 dark:bg-primary-900/20 backdrop-blur-sm">
           <span className="text-xs font-medium text-primary-600 dark:text-primary-300">
-            {Math.round(percentage)}% del objetivo
+            {Math.round(percentage)}% {t.percent_goal}
           </span>
         </div>
       </div>

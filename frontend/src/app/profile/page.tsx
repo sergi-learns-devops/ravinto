@@ -13,25 +13,26 @@ import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/authStore';
 import { authService } from '@/services/auth.service';
 import { api } from '@/services/api';
+import { useTranslation } from '@/i18n';
 
 const genderOptions = [
-  { value: 'male', label: 'Hombre' },
-  { value: 'female', label: 'Mujer' },
-  { value: 'other', label: 'Otro' },
+  { value: 'male', key: 'male' as const },
+  { value: 'female', key: 'female' as const },
+  { value: 'other', key: 'other' as const },
 ];
 
-const goalOptions = [
-  { value: 'lose', label: 'Perder peso', emoji: '📉' },
-  { value: 'maintain', label: 'Mantener', emoji: '⚖️' },
-  { value: 'gain', label: 'Ganar masa', emoji: '💪' },
+const goalOptionKeys = [
+  { value: 'lose', key: 'lose_weight' as const, emoji: '📉' },
+  { value: 'maintain', key: 'maintain' as const, emoji: '⚖️' },
+  { value: 'gain', key: 'gain_muscle' as const, emoji: '💪' },
 ];
 
-const activityOptions = [
-  { value: 'sedentary', label: 'Sedentario', desc: 'Poco o nada de ejercicio' },
-  { value: 'light', label: 'Ligero', desc: 'Ejercicio 1-3 días/semana' },
-  { value: 'moderate', label: 'Moderado', desc: 'Ejercicio 3-5 días/semana' },
-  { value: 'active', label: 'Activo', desc: 'Ejercicio 6-7 días/semana' },
-  { value: 'very_active', label: 'Muy activo', desc: 'Ejercicio intenso diario' },
+const activityOptionKeys = [
+  { value: 'sedentary', key: 'sedentary' as const, descKey: 'sedentary_desc' as const },
+  { value: 'light', key: 'light' as const, descKey: 'light_desc' as const },
+  { value: 'moderate', key: 'moderate' as const, descKey: 'moderate_desc' as const },
+  { value: 'active', key: 'active' as const, descKey: 'active_desc' as const },
+  { value: 'very_active', key: 'very_active' as const, descKey: 'very_active_desc' as const },
 ];
 
 interface Recommendations {
@@ -49,6 +50,7 @@ export default function ProfilePage() {
   const { logout } = useAuth();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
+  const { t } = useTranslation();
 
   // Profile state
   const [fullName, setFullName] = useState('');
@@ -108,10 +110,10 @@ export default function ProfilePage() {
 
       const updated = await api.patch<any>('/api/auth/me', payload);
       setUser(updated);
-      setMessage('✅ Perfil actualizado');
+      setMessage(t.profile_updated);
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      setMessage('❌ Error al guardar');
+      setMessage(t.profile_error);
     } finally {
       setSaving(false);
     }
@@ -123,7 +125,7 @@ export default function ProfilePage() {
       const recs = await api.get<Recommendations>('/api/auth/me/recommendations');
       setRecommendations(recs);
     } catch (err) {
-      setMessage('Completa edad, género, altura y peso para ver recomendaciones');
+      setMessage(t.profile_complete_body);
       setTimeout(() => setMessage(''), 4000);
     } finally {
       setLoadingRecs(false);
@@ -140,7 +142,7 @@ export default function ProfilePage() {
       setCarbsGoal(updated.carbs_goal_g?.toString() || '');
       setFatGoal(updated.fat_goal_g?.toString() || '');
       setRecommendations(null);
-      setMessage('✅ Objetivos actualizados con las recomendaciones');
+      setMessage(t.goals_updated);
       setTimeout(() => setMessage(''), 3000);
     } catch {
       setMessage('❌ Error al aplicar recomendaciones');
@@ -155,7 +157,7 @@ export default function ProfilePage() {
       await api.delete('/api/auth/me');
       logout();
     } catch {
-      setMessage('❌ Error al eliminar la cuenta');
+      setMessage(t.profile_error);
       setShowDeleteConfirm(false);
     } finally {
       setDeleting(false);
@@ -196,7 +198,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <Input
-            label="Nombre completo"
+            label={t.full_name}
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
           />
@@ -206,11 +208,11 @@ export default function ProfilePage() {
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Ruler className="w-5 h-5 text-primary-500" />
-            <h2 className="font-semibold text-neutral-900 dark:text-white">Medidas corporales</h2>
+            <h2 className="font-semibold text-neutral-900 dark:text-white">{t.body_measurements}</h2>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="Edad"
+              label={t.age}
               type="number"
               placeholder="25"
               value={age}
@@ -219,20 +221,20 @@ export default function ProfilePage() {
               max="120"
             />
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">Género</label>
+              <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300">{t.gender}</label>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value)}
                 className="input-field"
               >
-                <option value="">Seleccionar</option>
+                <option value="">{t.gender_select}</option>
                 {genderOptions.map((g) => (
-                  <option key={g.value} value={g.value}>{g.label}</option>
+                  <option key={g.value} value={g.value}>{t[g.key]}</option>
                 ))}
               </select>
             </div>
             <Input
-              label="Altura (cm)"
+              label={t.height_cm}
               type="number"
               placeholder="170"
               value={heightCm}
@@ -241,7 +243,7 @@ export default function ProfilePage() {
               max="300"
             />
             <Input
-              label="Peso (kg)"
+              label={t.weight_kg}
               type="number"
               placeholder="70"
               value={weightKg}
@@ -256,14 +258,14 @@ export default function ProfilePage() {
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Target className="w-5 h-5 text-secondary-400" />
-            <h2 className="font-semibold text-neutral-900 dark:text-white">Objetivo y actividad</h2>
+            <h2 className="font-semibold text-neutral-900 dark:text-white">{t.goal_activity}</h2>
           </div>
 
           <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300 mb-2">
-            ¿Cuál es tu objetivo?
+            {t.your_goal}
           </label>
           <div className="grid grid-cols-3 gap-2 mb-4">
-            {goalOptions.map((g) => (
+            {goalOptionKeys.map((g) => (
               <button
                 key={g.value}
                 onClick={() => setGoal(g.value)}
@@ -274,16 +276,16 @@ export default function ProfilePage() {
                 }`}
               >
                 <span className="text-lg block mb-0.5">{g.emoji}</span>
-                <span className="font-medium">{g.label}</span>
+                <span className="font-medium">{t[g.key]}</span>
               </button>
             ))}
           </div>
 
           <label className="block text-sm font-medium text-neutral-600 dark:text-neutral-300 mb-2">
-            Nivel de actividad
+            {t.activity_level}
           </label>
           <div className="space-y-2">
-            {activityOptions.map((a) => (
+            {activityOptionKeys.map((a) => (
               <button
                 key={a.value}
                 onClick={() => setActivityLevel(a.value)}
@@ -294,9 +296,9 @@ export default function ProfilePage() {
                 }`}
               >
                 <span className={`font-medium ${activityLevel === a.value ? 'text-primary-700 dark:text-primary-300' : 'text-neutral-700 dark:text-neutral-200'}`}>
-                  {a.label}
+                  {t[a.key]}
                 </span>
-                <span className="text-xs text-neutral-500 dark:text-neutral-400 ml-2">{a.desc}</span>
+                <span className="text-xs text-neutral-500 dark:text-neutral-400 ml-2">{t[a.descKey]}</span>
               </button>
             ))}
           </div>
@@ -307,16 +309,22 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Activity className="w-5 h-5 text-accent-400" />
-              <h2 className="font-semibold text-neutral-900 dark:text-white">Objetivos nutricionales</h2>
+              <h2 className="font-semibold text-neutral-900 dark:text-white">{t.nutrition_goals}</h2>
             </div>
-            <button
-              onClick={fetchRecommendations}
-              disabled={loadingRecs}
-              className="flex items-center gap-1 text-xs text-primary-500 hover:text-primary-600 font-medium"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              {loadingRecs ? 'Calculando...' : 'Calcular recomendación'}
-            </button>
+            {age && gender && heightCm && weightKg ? (
+              <button
+                onClick={fetchRecommendations}
+                disabled={loadingRecs}
+                className="flex items-center gap-1 text-xs text-primary-500 hover:text-primary-600 font-medium"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                {loadingRecs ? 'Calculando...' : 'Calcular recomendación'}
+              </button>
+            ) : (
+              <span className="text-[10px] text-neutral-400 italic">
+                Completa les mesures corporals ↑
+              </span>
+            )}
           </div>
 
           {recommendations && (
@@ -355,7 +363,7 @@ export default function ProfilePage() {
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <Input
-                label="Objetivo calórico diario (kcal)"
+                label={t.daily_goal_kcal}
                 type="number"
                 value={dailyGoal}
                 onChange={(e) => setDailyGoal(e.target.value)}
@@ -364,21 +372,21 @@ export default function ProfilePage() {
               />
             </div>
             <Input
-              label="Proteína (g)"
+              label={t.protein_label}
               type="number"
               placeholder="—"
               value={proteinGoal}
               onChange={(e) => setProteinGoal(e.target.value)}
             />
             <Input
-              label="Carbohidratos (g)"
+              label={t.carbs_label}
               type="number"
               placeholder="—"
               value={carbsGoal}
               onChange={(e) => setCarbsGoal(e.target.value)}
             />
             <Input
-              label="Grasas (g)"
+              label={t.fat_label}
               type="number"
               placeholder="—"
               value={fatGoal}
@@ -389,22 +397,22 @@ export default function ProfilePage() {
 
         {/* Save button */}
         <Button onClick={handleSave} loading={saving} size="lg" className="w-full">
-          Guardar cambios
+          {t.save}
         </Button>
 
         {/* Appearance */}
         <Card>
           <div className="flex items-center gap-2 mb-4">
             <Palette className="w-5 h-5 text-accent-400" />
-            <h2 className="font-semibold text-neutral-900 dark:text-white">Apariencia</h2>
+            <h2 className="font-semibold text-neutral-900 dark:text-white">{t.appearance}</h2>
           </div>
           <div className="space-y-3">
             <div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Tema</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{t.theme}</p>
               <ThemeToggle />
             </div>
             <div>
-              <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">Idioma</p>
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-2">{t.language}</p>
               <LanguageCards />
             </div>
           </div>
@@ -414,7 +422,7 @@ export default function ProfilePage() {
         <Card>
           <h2 className="font-semibold text-neutral-900 dark:text-white mb-4 flex items-center gap-2">
             <User className="w-5 h-5 text-neutral-400" />
-            Cuenta
+            {t.account}
           </h2>
           <div className="space-y-3">
             <a
@@ -438,14 +446,14 @@ export default function ProfilePage() {
               className="flex items-center gap-2 w-full py-2.5 px-3 rounded-xl text-sm text-neutral-600 dark:text-neutral-300 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors cursor-pointer"
             >
               <Download className="w-4 h-4 text-primary-500" />
-              Exportar dades (CSV)
+              {t.export_data}
             </a>
             <button
               onClick={logout}
               className="flex items-center gap-2 w-full py-2.5 px-3 rounded-xl text-sm text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100/50 dark:hover:bg-white/5 transition-colors"
             >
               <LogOut className="w-4 h-4" />
-              Cerrar sesión
+              {t.logout}
             </button>
             <div className="border-t border-neutral-200/50 dark:border-white/5 pt-3">
               <button
@@ -453,31 +461,31 @@ export default function ProfilePage() {
                 className="flex items-center gap-2 w-full py-2.5 px-3 rounded-xl text-sm text-red-500 hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors"
               >
                 <Trash2 className="w-4 h-4" />
-                Eliminar mi cuenta y datos
+                {t.delete_account}
               </button>
               <p className="text-[11px] text-neutral-400 mt-1.5 px-3">
-                Esta acción es irreversible. Se borrarán todos tus datos.
+                {t.delete_warning}
               </p>
             </div>
           </div>
         </Card>
 
         {/* Delete confirmation modal */}
-        <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title="¿Eliminar tu cuenta?">
+        <Modal isOpen={showDeleteConfirm} onClose={() => setShowDeleteConfirm(false)} title={t.delete_confirm_title}>
           <div className="space-y-4">
             <div className="p-4 rounded-xl bg-red-50/80 dark:bg-red-900/20 border border-red-200/50 dark:border-red-800/30">
               <p className="text-sm text-red-700 dark:text-red-300 font-medium mb-1">
-                ⚠️ Esta acción no se puede deshacer
+                ⚠️ {t.delete_warning}
               </p>
               <p className="text-xs text-red-600/70 dark:text-red-400/70">
-                Se eliminarán permanentemente tu cuenta, historial de comidas, alimentos favoritos y toda tu información personal.
+                {t.delete_confirm_text}
               </p>
             </div>
             <p className="text-sm text-neutral-600 dark:text-neutral-300">
-              Escribe <strong>eliminar</strong> para confirmar:
+              {t.type_delete}
             </p>
             <Input
-              placeholder="Escribe 'eliminar'"
+              placeholder={t.delete_word}
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
             />
@@ -487,16 +495,16 @@ export default function ProfilePage() {
                 className="flex-1"
                 onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
               >
-                Cancelar
+                {t.cancel}
               </Button>
               <Button
                 variant="danger"
                 className="flex-1"
-                disabled={deleteConfirmText !== 'eliminar'}
+                disabled={deleteConfirmText !== t.delete_word}
                 loading={deleting}
                 onClick={handleDeleteAccount}
               >
-                Eliminar cuenta
+                {t.delete_button}
               </Button>
             </div>
           </div>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Plus, CalendarDays, User } from 'lucide-react';
+import { LayoutDashboard, Plus, CalendarDays, User, Dumbbell } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useTranslation } from '@/i18n';
 
@@ -12,6 +12,7 @@ export function BottomNav() {
 
   const navItems = [
     { href: '/dashboard', icon: LayoutDashboard, label: t.nav_home },
+    { href: '/workout', icon: Dumbbell, label: t.nav_workout },
     { href: '/history', icon: CalendarDays, label: t.nav_history },
     { href: '/profile', icon: User, label: t.nav_profile },
   ];

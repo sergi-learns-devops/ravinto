@@ -123,7 +123,7 @@ export default function AddMealPage() {
             <ArrowLeft className="w-5 h-5 text-neutral-600 dark:text-neutral-300" />
           </button>
           <h1 className="text-xl font-bold font-heading text-neutral-900 dark:text-white">
-            Añadir comida
+            {t.add_meal_title}
           </h1>
         </div>
 
@@ -270,7 +270,7 @@ export default function AddMealPage() {
             {/* Quantity input */}
             <div className="mb-6">
               <Input
-                label="Cantidad (gramos)"
+                label={t.quantity_grams}
                 type="number"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
@@ -284,23 +284,23 @@ export default function AddMealPage() {
 
             {/* Save button */}
             <Button onClick={handleSave} loading={saving} size="lg" className="w-full">
-              Añadir a {mealTypes.find((t) => t.value === mealType)?.label?.toLowerCase()}
+              {t.add_to} {mealTypes.find((mt) => mt.value === mealType)?.label?.toLowerCase()}
             </Button>
           </>
         )}
 
         {/* Manual creation modal */}
-        <Modal isOpen={showManual} onClose={() => setShowManual(false)} title="Crear alimento">
+        <Modal isOpen={showManual} onClose={() => setShowManual(false)} title={t.create_manual}>
           <div className="space-y-3">
             <Input
-              label="Nombre"
+              label={t.food_name}
               placeholder="Ej: Tortilla de patatas casera"
               value={manualName}
               onChange={(e) => setManualName(e.target.value)}
               required
             />
             <Input
-              label="Calorías por 100g"
+              label={t.kcal_per_100g}
               type="number"
               placeholder="150"
               value={manualKcal}
@@ -309,21 +309,21 @@ export default function AddMealPage() {
             />
             <div className="grid grid-cols-3 gap-2">
               <Input
-                label="Proteína (g)"
+                label={t.protein_label}
                 type="number"
                 placeholder="0"
                 value={manualProtein}
                 onChange={(e) => setManualProtein(e.target.value)}
               />
               <Input
-                label="Carbos (g)"
+                label={t.carbs_label}
                 type="number"
                 placeholder="0"
                 value={manualCarbs}
                 onChange={(e) => setManualCarbs(e.target.value)}
               />
               <Input
-                label="Grasas (g)"
+                label={t.fat_label}
                 type="number"
                 placeholder="0"
                 value={manualFat}

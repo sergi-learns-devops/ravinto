@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Dumbbell } from 'lucide-react';
 import { AuthLayout } from '@/components/layout/AuthLayout';
 import { CalorieRing } from '@/components/ui/CalorieRing';
 import { Card } from '@/components/ui/Card';
@@ -18,6 +18,7 @@ import { useMeals } from '@/hooks/useMeals';
 import { useAuthStore } from '@/stores/authStore';
 import { analyticsService, WeeklySummary } from '@/services/analytics.service';
 import { useTranslation } from '@/i18n';
+import { api } from '@/services/api';
 
 const mealTypeKeys = {
   breakfast: 'breakfast',
@@ -46,11 +47,15 @@ export default function DashboardPage() {
   const [streak, setStreak] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const [weekly, setWeekly] = useState<WeeklySummary | null>(null);
-  const { t } = useTranslation();
+  const [todayWorkouts, setTodayWorkouts] = useState<any[]>([]);
+  const { t, locale } = useTranslation();
+
+  const dateLocale = locale === 'ca' ? 'ca-ES' : locale === 'en' ? 'en-GB' : 'es-ES';
 
   useEffect(() => {
     analyticsService.getStreak().then((data) => setStreak(data.streak_days)).catch(() => {});
     analyticsService.getWeekly().then(setWeekly).catch(() => {});
+    api.get<any[]>('/api/workouts/daily').then(setTodayWorkouts).catch(() => {});
   }, []);
 
   // Trigger confetti when goal is reached
@@ -87,7 +92,7 @@ export default function DashboardPage() {
             {getGreeting(t)}, {firstName} 🌱
           </h1>
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-            {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
+            {new Date().toLocaleDateString(dateLocale, { weekday: 'long', day: 'numeric', month: 'long' })}
           </p>
         </div>
 
@@ -183,6 +188,28 @@ export default function DashboardPage() {
               goal,
             }))}
           />
+        )}
+
+        {/* Workout widget */}
+        {todayWorkouts.length > 0 && (
+          <Card glow="secondary" className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-secondary-400/10 flex items-center justify-center">
+                <Dumbbell className="w-5 h-5 text-secondary-500" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-neutral-800 dark:text-white">
+                  {todayWorkouts.length} {todayWorkouts.length === 1 ? 'entrenament' : 'entrenaments'}
+                </p>
+                <p className="text-xs text-neutral-500">
+                  <AnimatedNumber value={Math.round(todayWorkouts.reduce((s: number, w: any) => s + w.calories_burned, 0))} className="text-xs text-secondary-500" suffix=" kcal" /> {t.workout_calories.toLowerCase()}
+                </p>
+              </div>
+            </div>
+            <Link href="/workout" className="text-xs text-primary-500 font-medium hover:underline">
+              {t.workout_recommendation} →
+            </Link>
+          </Card>
         )}
 
         {/* Fire Streak */}
