@@ -37,14 +37,20 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Crear .env
+# Crear .env y generar un secreto real
 cp ../.env.example .env
+python3 -c "import secrets; print('SECRET_KEY=' + secrets.token_urlsafe(64))"
+# Sustituye la línea SECRET_KEY=CAMBIAME del .env por la salida anterior
+
+# Aplicar migraciones (una sola vez)
+alembic upgrade head
 
 # Arrancar
 uvicorn app.main:app --reload --port 8000
 ```
 
-La API estará en http://localhost:8000 y la documentación Swagger en http://localhost:8000/docs
+La API estará en http://localhost:8000. Swagger/OpenAPI está desactivado por defecto;
+actívalo solo en desarrollo con `ENABLE_DOCS=true`.
 
 ### Frontend
 
@@ -59,6 +65,7 @@ La app estará en http://localhost:3000
 ### Docker (todo junto)
 
 ```bash
+export SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')"
 docker-compose up --build
 ```
 
@@ -229,8 +236,8 @@ cd ravinto
 # 2. Configurar la IP de tu servidor
 export HOMELAB_IP=192.168.1.XX   # ← Cambia por la IP de tu server
 
-# 3. (Opcional) Cambiar el secret key
-export SECRET_KEY=$(openssl rand -hex 32)
+# 3. Generar una SECRET_KEY obligatoria
+export SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')
 
 # 4. Desplegar
 docker compose -f docker-compose.homelab.yml up -d --build
@@ -241,7 +248,7 @@ docker compose -f docker-compose.homelab.yml up -d --build
 | Servicio | URL |
 |----------|-----|
 | App (frontend) | `http://TU_IP:3000` |
-| API docs (Swagger) | `http://TU_IP:8000/docs` |
+| API docs (Swagger) | Solo si activas `ENABLE_DOCS=true` |
 | Health check | `http://TU_IP:8000/api/health` |
 
 ### Gestión
@@ -290,7 +297,9 @@ Variables de entorno opcionales en `docker-compose.homelab.yml`:
 | Variable | Default | Descripción |
 |----------|---------|-------------|
 | `HOMELAB_IP` | `localhost` | IP del servidor para acceso en red local |
-| `SECRET_KEY` | Auto-generada | Clave para firmar JWT tokens |
+| `SECRET_KEY` | **Obligatoria** (sin default inseguro) | Clave para firmar JWT tokens |
+| `ENABLE_DOCS` | `false` | Activa Swagger/OpenAPI |
+| `REFRESH_COOKIE_SECURE` | `false` | Ponlo a `true` cuando uses HTTPS |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | Duración del token de acceso |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `30` | Duración del refresh token |
 
@@ -298,5 +307,7 @@ Variables de entorno opcionales en `docker-compose.homelab.yml`:
 
 - Los datos se almacenan en un volumen Docker (`ravinto_data`). No se pierden al actualizar.
 - El backend usa SQLite con WAL mode para lecturas concurrentes.
+- Para exponer la app fuera de la red local, pon un reverse proxy con HTTPS y activa
+  `REFRESH_COOKIE_SECURE=true` y `REFRESH_COOKIE_SAMESITE=none`.
 - CORS está abierto (`*`) para permitir acceso desde cualquier dispositivo de la red local.
 - La PWA funciona desde el navegador del móvil: accede a `http://TU_IP:3000` y "Añadir a pantalla de inicio".

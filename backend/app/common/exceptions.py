@@ -12,9 +12,10 @@ class CredentialsException(HTTPException):
 
 class UserAlreadyExistsException(HTTPException):
     def __init__(self):
+        # Generic message on purpose: it must not confirm whether an email exists.
         super().__init__(
             status_code=status.HTTP_409_CONFLICT,
-            detail="El email ya está registrado",
+            detail="No se pudo completar el registro. Revisa los datos o inicia sesión.",
         )
 
 
@@ -31,4 +32,21 @@ class ForbiddenException(HTTPException):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tienes permiso para acceder a este recurso",
+        )
+
+
+class ConflictException(HTTPException):
+    def __init__(self, detail: str = "El recurso ya existe"):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=detail,
+        )
+
+
+class RateLimitException(HTTPException):
+    def __init__(self, retry_after: int = 60):
+        super().__init__(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Demasiadas solicitudes. Inténtalo de nuevo más tarde.",
+            headers={"Retry-After": str(retry_after)},
         )

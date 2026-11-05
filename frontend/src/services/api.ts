@@ -2,6 +2,39 @@ import { useAuthStore } from '@/stores/authStore';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+type RequestOptions = {
+  method: string;
+  body?: unknown;
+  auth: boolean;
+  retry?: boolean;
+};
+
+// Single-flight refresh: concurrent 401s share one refresh request.
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) return false;
+        const data = await response.json();
+        useAuthStore.getState().setAccessToken(data.access_token);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+  }
+  return refreshPromise;
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -9,109 +42,69 @@ class ApiClient {
     this.baseUrl = API_URL;
   }
 
-  private getHeaders(includeAuth = true): HeadersInit {
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-    if (includeAuth) {
+  private async request<T>(path: string, options: RequestOptions): Promise<T> {
+    const headers: Record<string, string> = {};
+    if (options.body !== undefined) {
+      headers['Content-Type'] = 'application/json';
+    }
+    if (options.auth) {
       const token = useAuthStore.getState().accessToken;
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
     }
-    return headers;
-  }
 
-  private async handleResponse(response: Response) {
-    if (response.status === 401) {
-      // Try to refresh token
-      const refreshed = await this.refreshAccessToken();
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: options.method,
+      headers,
+      credentials: 'include',
+      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    });
+
+    if (response.status === 401 && options.auth && options.retry !== false) {
+      const refreshed = await refreshAccessToken();
       if (!refreshed) {
         useAuthStore.getState().logout();
-        window.location.href = '/login';
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
         throw new Error('Session expired');
       }
-      return null; // signal to retry
+      return this.request<T>(path, { ...options, retry: false });
     }
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Error del servidor' }));
-      throw new Error(error.detail || `Error ${response.status}`);
+      const error = await response.json().catch(() => null);
+      let detail: unknown = error?.detail;
+      if (Array.isArray(detail)) {
+        detail = detail[0]?.msg;
+      }
+      const message = typeof detail === 'string' ? detail : `Error ${response.status}`;
+      throw new Error(message);
     }
 
-    if (response.status === 204) return null;
-    return response.json();
-  }
-
-  private async refreshAccessToken(): Promise<boolean> {
-    const refreshToken = useAuthStore.getState().refreshToken;
-    if (!refreshToken) return false;
-
-    try {
-      const response = await fetch(`${this.baseUrl}/api/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-
-      if (!response.ok) return false;
-
-      const data = await response.json();
-      useAuthStore.getState().setTokens(data.access_token, refreshToken);
-      return true;
-    } catch {
-      return false;
+    if (response.status === 204) {
+      return null as T;
     }
+
+    const text = await response.text();
+    return (text ? JSON.parse(text) : null) as T;
   }
 
   async get<T>(path: string): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      headers: this.getHeaders(),
-    });
-    const result = await this.handleResponse(response);
-    if (result === null && response.status === 401) {
-      // Retry after refresh
-      const retryResponse = await fetch(`${this.baseUrl}${path}`, {
-        headers: this.getHeaders(),
-      });
-      return retryResponse.json();
-    }
-    return result;
+    return this.request<T>(path, { method: 'GET', auth: true });
   }
 
   async post<T>(path: string, body?: unknown, auth = true): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'POST',
-      headers: this.getHeaders(auth),
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const result = await this.handleResponse(response);
-    if (result === null && response.status === 401) {
-      const retryResponse = await fetch(`${this.baseUrl}${path}`, {
-        method: 'POST',
-        headers: this.getHeaders(auth),
-        body: body ? JSON.stringify(body) : undefined,
-      });
-      return retryResponse.json();
-    }
-    return result;
+    return this.request<T>(path, { method: 'POST', body, auth });
   }
 
   async patch<T>(path: string, body: unknown): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'PATCH',
-      headers: this.getHeaders(),
-      body: JSON.stringify(body),
-    });
-    return this.handleResponse(response);
+    return this.request<T>(path, { method: 'PATCH', body, auth: true });
   }
 
   async delete(path: string): Promise<void> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
-      method: 'DELETE',
-      headers: this.getHeaders(),
-    });
-    await this.handleResponse(response);
+    return this.request<void>(path, { method: 'DELETE', auth: true });
   }
 }
 

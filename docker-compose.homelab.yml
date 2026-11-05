@@ -15,8 +15,11 @@ services:
       - ravinto_data:/app/data
     environment:
       - DATABASE_URL=sqlite+aiosqlite:///./data/ravinto.db
-      - SECRET_KEY=${SECRET_KEY:-ravinto-homelab-secret-change-me-in-production}
-      - CORS_ORIGINS=*
+      - "SECRET_KEY=${SECRET_KEY:?Define SECRET_KEY (python3 -c 'import secrets; print(secrets.token_urlsafe(64))')}"
+      - CORS_ORIGINS=http://${HOMELAB_IP:-localhost}:3000
+      - ENABLE_DOCS=false
+      # Ponlo a true cuando sirvas la API por HTTPS (recomendado con un reverse proxy TLS)
+      - REFRESH_COOKIE_SECURE=false
       - ACCESS_TOKEN_EXPIRE_MINUTES=60
       - REFRESH_TOKEN_EXPIRE_DAYS=30
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2

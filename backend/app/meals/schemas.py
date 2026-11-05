@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-from datetime import date, datetime
+from datetime import date as date_type, datetime
 from enum import Enum
 from typing import Optional
 
@@ -21,9 +21,9 @@ class MealItemCreate(BaseModel):
 
 class MealCreate(BaseModel):
     meal_type: MealType
-    date: Optional[date] = None  # defaults to today
+    date: Optional[date_type] = None  # defaults to today
     notes: Optional[str] = Field(None, max_length=500)
-    items: list[MealItemCreate] = Field(min_length=1)
+    items: list[MealItemCreate] = Field(min_length=1, max_length=50)
 
 
 class MealItemAdd(BaseModel):
@@ -50,7 +50,7 @@ class MealItemResponse(BaseModel):
 class MealResponse(BaseModel):
     id: str
     meal_type: MealType
-    date: date
+    date: date_type
     notes: Optional[str] = None
     items: list[MealItemResponse]
     total_kcal: float
@@ -61,7 +61,7 @@ class MealResponse(BaseModel):
 
 
 class DailySummary(BaseModel):
-    date: date
+    date: date_type
     total_kcal: float
     total_protein: float
     total_carbs: float

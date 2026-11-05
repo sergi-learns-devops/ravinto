@@ -1,0 +1,16 @@
+# Dependencies and build output
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# VCS / IDE
+.git/
+.gitignore
+.vscode/
+.idea/

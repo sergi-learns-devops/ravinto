@@ -13,7 +13,6 @@ export interface RegisterData {
 
 export interface TokenResponse {
   access_token: string;
-  refresh_token: string;
   token_type: string;
 }
 
@@ -41,6 +40,16 @@ export const authService = {
 
   async register(data: RegisterData): Promise<UserResponse> {
     return api.post<UserResponse>('/api/auth/register', data, false);
+  },
+
+  /** Exchange the HttpOnly refresh cookie for a new access token. */
+  async refresh(): Promise<TokenResponse> {
+    return api.post<TokenResponse>('/api/auth/refresh', undefined, false);
+  },
+
+  /** Revoke the refresh token server-side and clear the cookie. */
+  async logout(): Promise<void> {
+    return api.post<void>('/api/auth/logout', undefined, false);
   },
 
   async getMe(): Promise<UserResponse> {

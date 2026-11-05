@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -23,7 +23,7 @@ async def search_foods(
 ):
     """Search foods in local DB first, then Open Food Facts if needed."""
     # Search locally first
-    local_results = await service.search_foods_local(db, q)
+    local_results = await service.search_foods_local(db, q, current_user.id)
 
     if len(local_results) >= 5:
         return FoodSearchResult(
@@ -39,7 +39,9 @@ async def search_foods(
     cached_items = []
     for food_data in off_results:
         cached = await service.cache_food_from_off(db, food_data)
-        cached_items.append(cached)
+        # Do not expose another user's private custom food.
+        if cached is not None and cached.created_by in (None, current_user.id):
+            cached_items.append(cached)
 
     # Combine: local first, then OFF results (dedup by barcode)
     local_barcodes = {f.barcode for f in local_results if f.barcode}
@@ -59,13 +61,13 @@ async def search_foods(
 
 @router.get("/barcode/{barcode}", response_model=FoodItemResponse)
 async def get_by_barcode(
-    barcode: str,
+    barcode: str = Path(..., min_length=8, max_length=14, pattern=r"^\d{8,14}$"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Get food by barcode. Checks local cache first, then Open Food Facts."""
     # Check local first
-    food = await service.get_food_by_barcode_local(db, barcode)
+    food = await service.get_food_by_barcode_local(db, barcode, current_user.id)
     if food:
         return food
 
@@ -73,7 +75,8 @@ async def get_by_barcode(
     off_data = await service.get_food_by_barcode_openfoodfacts(barcode)
     if off_data:
         cached = await service.cache_food_from_off(db, off_data)
-        return cached
+        if cached and cached.created_by in (None, current_user.id):
+            return cached
 
     from app.common.exceptions import NotFoundException
     raise NotFoundException("Alimento con ese código de barras")
@@ -97,7 +100,7 @@ async def get_food(
     current_user: User = Depends(get_current_user),
 ):
     """Get a food item by ID."""
-    return await service.get_food_by_id(db, food_id)
+    return await service.get_food_by_id(db, food_id, current_user.id)
 
 
 # Favorites

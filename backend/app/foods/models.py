@@ -25,7 +25,7 @@ class FoodItem(Base):
     image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     source: Mapped[str] = mapped_column(String(20), default="manual")
     created_by: Mapped[Optional[str]] = mapped_column(
-        String(36), ForeignKey("users.id"), nullable=True
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

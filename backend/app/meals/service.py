@@ -62,7 +62,7 @@ async def create_meal(db: AsyncSession, data: MealCreate, user_id: str) -> MealR
 
     # Create meal items
     for item_data in data.items:
-        food = await get_food_by_id(db, item_data.food_item_id)
+        food = await get_food_by_id(db, item_data.food_item_id, user_id)
         kcal_total = round((food.kcal_per_100g * item_data.quantity_grams) / 100, 1)
 
         meal_item = MealItem(
@@ -82,7 +82,9 @@ async def create_meal(db: AsyncSession, data: MealCreate, user_id: str) -> MealR
         .options(selectinload(Meal.items).selectinload(MealItem.food_item))
     )
     meal = result.scalar_one()
-    return _build_meal_response(meal)
+    response = _build_meal_response(meal)
+    await db.commit()
+    return response
 
 
 async def get_meals_by_date(db: AsyncSession, user_id: str, target_date: date) -> list[MealResponse]:
@@ -123,7 +125,7 @@ async def add_item_to_meal(
     if meal.user_id != user_id:
         raise ForbiddenException()
 
-    food = await get_food_by_id(db, data.food_item_id)
+    food = await get_food_by_id(db, data.food_item_id, user_id)
     kcal_total = round((food.kcal_per_100g * data.quantity_grams) / 100, 1)
 
     meal_item = MealItem(
@@ -142,7 +144,9 @@ async def add_item_to_meal(
         .options(selectinload(Meal.items).selectinload(MealItem.food_item))
     )
     meal = result.scalar_one()
-    return _build_meal_response(meal)
+    response = _build_meal_response(meal)
+    await db.commit()
+    return response
 
 
 async def delete_meal(db: AsyncSession, meal_id: str, user_id: str) -> None:
@@ -154,6 +158,7 @@ async def delete_meal(db: AsyncSession, meal_id: str, user_id: str) -> None:
     if meal.user_id != user_id:
         raise ForbiddenException()
     await db.delete(meal)
+    await db.commit()
 
 
 async def delete_meal_item(db: AsyncSession, item_id: str, user_id: str) -> None:
@@ -169,3 +174,4 @@ async def delete_meal_item(db: AsyncSession, item_id: str, user_id: str) -> None
     if meal_item.meal.user_id != user_id:
         raise ForbiddenException()
     await db.delete(meal_item)
+    await db.commit()

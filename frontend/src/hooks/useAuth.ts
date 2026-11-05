@@ -7,7 +7,7 @@ import { authService, LoginData, RegisterData } from '@/services/auth.service';
 
 export function useAuth() {
   const router = useRouter();
-  const { setTokens, setUser, logout: storeLogout, user, accessToken } = useAuthStore();
+  const { setAccessToken, setUser, logout: storeLogout, user, accessToken } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,7 +16,7 @@ export function useAuth() {
     setError(null);
     try {
       const tokens = await authService.login(data);
-      setTokens(tokens.access_token, tokens.refresh_token);
+      setAccessToken(tokens.access_token);
       const me = await authService.getMe();
       setUser(me);
       router.push(redirectTo);
@@ -34,7 +34,7 @@ export function useAuth() {
       await authService.register(data);
       // Auto-login after register, redirect to onboarding
       const tokens = await authService.login({ email: data.email, password: data.password });
-      setTokens(tokens.access_token, tokens.refresh_token);
+      setAccessToken(tokens.access_token);
       const me = await authService.getMe();
       setUser(me);
       router.push('/onboarding');
@@ -45,7 +45,12 @@ export function useAuth() {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await authService.logout();
+    } catch {
+      // The local session is cleared even if the server call fails.
+    }
     storeLogout();
     router.push('/login');
   };

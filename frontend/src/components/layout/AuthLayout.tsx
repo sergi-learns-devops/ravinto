@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
+import { useSession } from '@/hooks/useSession';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { TopBar } from '@/components/layout/TopBar';
@@ -12,6 +13,7 @@ import { clsx } from 'clsx';
 export function AuthLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { accessToken } = useAuthStore();
+  const sessionReady = useSession();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Persist sidebar state
@@ -29,12 +31,12 @@ export function AuthLayout({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    if (!accessToken) {
+    if (sessionReady && !accessToken) {
       router.replace('/login');
     }
-  }, [accessToken, router]);
+  }, [sessionReady, accessToken, router]);
 
-  if (!accessToken) return null;
+  if (!sessionReady || !accessToken) return null;
 
   return (
     <div className="min-h-screen">

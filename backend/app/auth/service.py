@@ -1,16 +1,26 @@
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
-from app.auth.models import User
+from app.auth.models import User, RefreshToken
 from app.auth.schemas import UserRegister, UserUpdate, BMRResponse
-from app.common.security import hash_password, verify_password
+from app.common.security import hash_password, verify_password, utcnow
 from app.common.exceptions import UserAlreadyExistsException, CredentialsException
+
+# Used to keep login timing constant when the email does not exist.
+_DUMMY_HASH = "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4J/HS.iK8i"
+
+
+def normalize_email(email: str) -> str:
+    return email.strip().lower()
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
-    result = await db.execute(select(User).where(User.email == email))
+    result = await db.execute(select(User).where(User.email == normalize_email(email)))
     return result.scalar_one_or_none()
 
 
@@ -25,32 +35,129 @@ async def create_user(db: AsyncSession, data: UserRegister) -> User:
         raise UserAlreadyExistsException()
 
     user = User(
-        email=data.email,
-        hashed_password=hash_password(data.password),
-        full_name=data.full_name,
+        email=normalize_email(data.email),
+        hashed_password=await run_in_threadpool(hash_password, data.password),
+        full_name=data.full_name.strip(),
     )
     db.add(user)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        # Concurrent registration with the same email.
+        raise UserAlreadyExistsException()
     await db.refresh(user)
+    # Commit before the response is sent (the dependency teardown runs later),
+    # so an immediate login/read sees the new user.
+    await db.commit()
     return user
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
     user = await get_user_by_email(db, email)
-    if not user or not verify_password(password, user.hashed_password):
-        raise CredentialsException()
-    if not user.is_active:
+
+    # Always run bcrypt so response time does not reveal whether the account exists.
+    hashed_password = user.hashed_password if user else _DUMMY_HASH
+    password_ok = await run_in_threadpool(verify_password, password, hashed_password)
+
+    if not user or not password_ok or not user.is_active:
         raise CredentialsException()
     return user
 
 
 async def update_user(db: AsyncSession, user: User, data: UserUpdate) -> User:
     update_data = data.model_dump(exclude_unset=True)
+    if "full_name" in update_data and update_data["full_name"] is not None:
+        update_data["full_name"] = update_data["full_name"].strip()
     for field, value in update_data.items():
         setattr(user, field, value)
     await db.flush()
     await db.refresh(user)
+    await db.commit()
     return user
+
+
+async def delete_user_account(db: AsyncSession, user: User) -> None:
+    """Delete the user and everything owned by them.
+
+    Custom foods are kept but detached (created_by = NULL) because they may be
+    referenced by meals belonging to other users.
+    """
+    from app.foods.models import FoodItem
+
+    await db.execute(
+        update(FoodItem)
+        .where(FoodItem.created_by == user.id)
+        .values(created_by=None)
+    )
+    await db.delete(user)
+    await db.flush()
+    await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Refresh token rotation / revocation
+# ---------------------------------------------------------------------------
+
+async def create_refresh_token_record(
+    db: AsyncSession, user_id: str, jti: str, expires_at: datetime
+) -> None:
+    db.add(RefreshToken(jti=jti, user_id=user_id, expires_at=expires_at))
+    await db.flush()
+    # Persist before the response so the cookie is usable immediately.
+    await db.commit()
+
+
+async def get_refresh_token_record(db: AsyncSession, jti: str) -> Optional[RefreshToken]:
+    result = await db.execute(select(RefreshToken).where(RefreshToken.jti == jti))
+    return result.scalar_one_or_none()
+
+
+async def revoke_refresh_token(db: AsyncSession, jti: str, user_id: str) -> None:
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.jti == jti, RefreshToken.user_id == user_id)
+        .values(revoked=True)
+    )
+    await db.commit()
+
+
+async def revoke_all_refresh_tokens(db: AsyncSession, user_id: str) -> None:
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False))
+        .values(revoked=True)
+    )
+    await db.commit()
+
+
+async def rotate_refresh_token(
+    db: AsyncSession,
+    *,
+    jti: str,
+    user_id: str,
+    new_jti: str,
+    new_expires_at: datetime,
+) -> None:
+    """Consume a refresh token and issue a new one.
+
+    Reusing an already-revoked token is treated as theft and revokes every
+    active token for that user.
+    """
+    record = await get_refresh_token_record(db, jti)
+    if record is None or record.revoked:
+        if record is not None:
+            # A revoked token is being replayed: assume theft and invalidate
+            # every active session for this user.
+            await revoke_all_refresh_tokens(db, record.user_id)
+        raise CredentialsException()
+
+    if record.user_id != user_id or record.expires_at <= utcnow():
+        record.revoked = True
+        await db.commit()
+        raise CredentialsException()
+
+    record.revoked = True
+    await create_refresh_token_record(db, user_id, new_jti, new_expires_at)
 
 
 def calculate_bmr_tdee(user: User) -> Optional[BMRResponse]:

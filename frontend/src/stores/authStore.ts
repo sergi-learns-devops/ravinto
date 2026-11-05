@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
 export interface User {
   id: string;
@@ -18,32 +17,23 @@ export interface User {
 }
 
 interface AuthState {
+  /** Short-lived access token. Kept in memory only (never in localStorage). */
   accessToken: string | null;
-  refreshToken: string | null;
   user: User | null;
-  setTokens: (access: string, refresh: string) => void;
-  setUser: (user: User) => void;
+  /** True once the initial silent refresh (HttpOnly cookie) has completed. */
+  initialized: boolean;
+  setAccessToken: (access: string | null) => void;
+  setUser: (user: User | null) => void;
+  setInitialized: (initialized: boolean) => void;
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      accessToken: null,
-      refreshToken: null,
-      user: null,
-      setTokens: (access, refresh) =>
-        set({ accessToken: access, refreshToken: refresh }),
-      setUser: (user) => set({ user }),
-      logout: () => set({ accessToken: null, refreshToken: null, user: null }),
-    }),
-    {
-      name: 'ravinto-auth',
-      partialize: (state) => ({
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
-        user: state.user,
-      }),
-    }
-  )
-);
+export const useAuthStore = create<AuthState>((set) => ({
+  accessToken: null,
+  user: null,
+  initialized: false,
+  setAccessToken: (accessToken) => set({ accessToken }),
+  setUser: (user) => set({ user }),
+  setInitialized: (initialized) => set({ initialized }),
+  logout: () => set({ accessToken: null, user: null, initialized: true }),
+}));

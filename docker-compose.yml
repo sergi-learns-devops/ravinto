@@ -9,8 +9,10 @@ services:
       - ./backend/app:/app/app
     environment:
       - DATABASE_URL=sqlite+aiosqlite:///./data/ravinto.db
-      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production-please}
-      - CORS_ORIGINS=http://localhost:3000,http://192.168.1.172:3000
+      - "SECRET_KEY=${SECRET_KEY:?Define SECRET_KEY (python3 -c 'import secrets; print(secrets.token_urlsafe(64))')}"
+      - CORS_ORIGINS=http://localhost:3000,http://${HOMELAB_IP:-localhost}:3000
+      - ENABLE_DOCS=false
+      - REFRESH_COOKIE_SECURE=false
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     user: "501:20"
     restart: unless-stopped
@@ -19,12 +21,12 @@ services:
     build:
       context: ./frontend
       args:
-        - NEXT_PUBLIC_API_URL=http://192.168.1.172:8000
+        - NEXT_PUBLIC_API_URL=http://${HOMELAB_IP:-localhost}:8000
     container_name: ravinto-web
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://192.168.1.172:8000
+      - NEXT_PUBLIC_API_URL=http://${HOMELAB_IP:-localhost}:8000
     depends_on:
       - backend
     restart: unless-stopped

@@ -1,12 +1,11 @@
-from datetime import date, time, datetime
-from typing import Optional
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.workouts.models import Workout
 from app.workouts.schemas import (
-    WorkoutCreate, WorkoutResponse, NutritionRecommendation,
+    WorkoutCreate, NutritionRecommendation,
     MacroSuggestion, MealExample,
 )
 from app.auth.models import User
@@ -38,7 +37,6 @@ def calculate_calories_burned(discipline: str, duration_min: int, intensity: str
 
 
 async def create_workout(db: AsyncSession, data: WorkoutCreate, user: User) -> Workout:
-    workout_time = time(int(data.workout_time.split(":")[0]), int(data.workout_time.split(":")[1]))
     weight = user.weight_kg or 70
 
     calories = calculate_calories_burned(data.discipline, data.duration_min, data.intensity, weight)
@@ -47,8 +45,8 @@ async def create_workout(db: AsyncSession, data: WorkoutCreate, user: User) -> W
         user_id=user.id,
         discipline=data.discipline,
         duration_min=data.duration_min,
-        intensity=data.intensity,
-        workout_time=workout_time,
+        intensity=data.intensity.value,
+        workout_time=data.workout_time,
         date=data.date or date.today(),
         calories_burned=calories,
         notes=data.notes,
@@ -56,6 +54,7 @@ async def create_workout(db: AsyncSession, data: WorkoutCreate, user: User) -> W
     db.add(workout)
     await db.flush()
     await db.refresh(workout)
+    await db.commit()
     return workout
 
 
@@ -76,6 +75,7 @@ async def delete_workout(db: AsyncSession, workout_id: str, user_id: str) -> Non
     if workout.user_id != user_id:
         raise ForbiddenException()
     await db.delete(workout)
+    await db.commit()
 
 
 def get_nutrition_recommendation(workout: Workout, user: User) -> NutritionRecommendation:
@@ -104,7 +104,6 @@ def get_nutrition_recommendation(workout: Workout, user: User) -> NutritionRecom
     cardio_disciplines = {"running", "cycling", "swimming", "hiit"}
     is_strength = discipline in strength_disciplines
     is_cardio = discipline in cardio_disciplines
-    is_light = discipline in {"yoga"} or intensity == "low"
     is_evening = hour >= 19
 
     # Build macros suggestion

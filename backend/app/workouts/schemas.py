@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
-from datetime import date, datetime
+from datetime import date as date_type, datetime, time
 from typing import Optional
 from enum import Enum
 
@@ -16,8 +16,8 @@ class WorkoutCreate(BaseModel):
     discipline: str = Field(min_length=1, max_length=50)
     duration_min: int = Field(ge=1, le=600)
     intensity: Intensity
-    workout_time: str = Field(pattern=r'^\d{2}:\d{2}$')  # HH:MM
-    date: Optional[date] = None
+    workout_time: time  # HH:MM (validated by Pydantic into a real time)
+    date: Optional[date_type] = None
     notes: Optional[str] = Field(None, max_length=500)
 
 
@@ -27,7 +27,7 @@ class WorkoutResponse(BaseModel):
     duration_min: int
     intensity: str
     workout_time: str
-    date: date
+    date: date_type
     calories_burned: float
     notes: Optional[str] = None
     created_at: datetime

@@ -426,22 +426,29 @@ export default function ProfilePage() {
           </h2>
           <div className="space-y-3">
             <a
-              href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/me/export`}
-              onClick={(e) => {
+              href="#"
+              onClick={async (e) => {
                 e.preventDefault();
-                const token = require('@/stores/authStore').useAuthStore.getState().accessToken;
-                fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/me/export`, {
-                  headers: { Authorization: `Bearer ${token}` }
-                })
-                  .then(r => r.blob())
-                  .then(blob => {
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `ravinto_export_${new Date().toISOString().split('T')[0]}.csv`;
-                    a.click();
-                    URL.revokeObjectURL(url);
-                  });
+                try {
+                  const token = useAuthStore.getState().accessToken;
+                  const response = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/me/export`,
+                    {
+                      credentials: 'include',
+                      headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    }
+                  );
+                  if (!response.ok) throw new Error('export failed');
+                  const blob = await response.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `ravinto_export_${new Date().toISOString().split('T')[0]}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                } catch {
+                  setMessage(t.profile_error);
+                }
               }}
               className="flex items-center gap-2 w-full py-2.5 px-3 rounded-xl text-sm text-neutral-600 dark:text-neutral-300 hover:bg-primary-50/50 dark:hover:bg-primary-900/10 transition-colors cursor-pointer"
             >

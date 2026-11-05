@@ -109,22 +109,24 @@ async def get_monthly_summary(db: AsyncSession, user_id: str, year: int, month: 
 
 
 async def get_streak(db: AsyncSession, user_id: str) -> int:
-    """Calculate the current streak (consecutive days with logged meals)."""
-    today = date.today()
-    streak = 0
-    current_date = today
+    """Calculate the current streak (consecutive days with logged meals).
 
-    while True:
-        result = await db.execute(
-            select(func.count(Meal.id))
-            .where(Meal.user_id == user_id, Meal.date == current_date)
-        )
-        count = result.scalar()
-        if count and count > 0:
-            streak += 1
-            current_date -= timedelta(days=1)
-        else:
-            break
+    Uses a single query for all distinct logged dates instead of one query per
+    day (avoids N+1 when the user has a long history).
+    """
+    result = await db.execute(
+        select(Meal.date)
+        .where(Meal.user_id == user_id)
+        .distinct()
+        .order_by(Meal.date.desc())
+    )
+    logged_dates = set(result.scalars().all())
+
+    streak = 0
+    current_date = date.today()
+    while current_date in logged_dates:
+        streak += 1
+        current_date -= timedelta(days=1)
 
     return streak
 

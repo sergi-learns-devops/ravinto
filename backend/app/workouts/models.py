@@ -26,4 +26,4 @@ class Workout(Base):
     notes: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    user = relationship("User", backref="workouts")
+    user = relationship("User", back_populates="workouts")
